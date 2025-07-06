@@ -1,3 +1,4 @@
+
 # Project Setup Steps
 
 ## Prerequisites: Infrastructure Installation
@@ -16,10 +17,10 @@ Before starting, ensure you have the following tools installed on your system:
    - Download and install Git from [https://git-scm.com/downloads](https://git-scm.com/downloads)
    - Required for cloning the repository and version control.
 
-
-# Project Setup Steps
+---
 
 ## Initial Configuration
+
 
 
 Before proceeding, make sure to create the following configuration files by copying the provided example files:
@@ -31,8 +32,31 @@ Before proceeding, make sure to create the following configuration files by copy
 
 After copying, review and update the variables in each `.env` and `alembic.ini` file as needed for your local setup.
 
+---
 
-1. **Apply database migrations inside the backend Docker container:**
+## Build and Start Docker Services
+
+1. **Build Docker images for all services:**
+    - Run the following command from the project root:
+       ```sh
+       docker compose -f docker/docker-compose.yml build
+       ```
+    - This will build the backend, frontend, and any other required service images.
+
+2. **Start all services using Docker Compose:**
+    - Run:
+       ```sh
+       docker compose -f docker/docker-compose.yml up -d
+       ```
+    - This will start all containers in detached mode.
+
+---
+
+
+
+## Post-Startup Steps
+
+3. **Apply database migrations inside the backend Docker container:**
    - Run the following command from the project root:
      ```sh
      docker compose -f docker/docker-compose.yml exec backend sh -c 'alembic -c migrations/alembic.ini upgrade head'
@@ -40,28 +64,31 @@ After copying, review and update the variables in each `.env` and `alembic.ini` 
    - This will apply all pending Alembic migrations to the database.
    - Ensure the command output shows successful migration steps.
 
-
-2. **Pull the Ollama embedding model using the ollama Docker service:**
+4. **Pull the Ollama embedding model using the ollama Docker service:**
    - Run the following command from the project root:
      ```sh
      docker compose -f docker/docker-compose.yml exec ollama ollama pull nomic-embed-text
      ```
    - This will download the `nomic-embed-text` embedding model for use with Ollama.
 
-3. **Pull the Ollama language model using the ollama Docker service:**
+5. **Pull the Ollama language model using the ollama Docker service:**
    - Run the following command from the project root:
      ```sh
      docker compose -f docker/docker-compose.yml exec ollama ollama pull qwen2.5:0.5b
      ```
    - This will download the `qwen2.5:0.5b` language model for use with Ollama.
 
-4. **Chunk a document or documents using the API (via FastAPI docs):**
+---
+
+## Using the API
+
+6. **Chunk a document or documents using the API (via FastAPI docs):**
    - Open your browser and go to [http://localhost:8008/docs](http://localhost:8008/docs) (replace `8008` with your backend's external port if different).
    - Use the `POST /document/{document_id}/start-chunking` endpoint to chunk a single document by its ID.
    - Or use the `POST /batch/start-chunking` endpoint to chunk multiple documents by providing a list of document IDs in the request body.
    - You can also check chunking status and results using the related endpoints in the docs UI.
 
-5. **Create embeddings for document chunks using the API (via FastAPI docs):**
+7. **Create embeddings for document chunks using the API (via FastAPI docs):**
    - In the FastAPI docs at [http://localhost:8008/docs](http://localhost:8008/docs), locate the embedding endpoints (usually under `/embedding` or similar).
    - Use the `POST /embedding/{document_id}/start` endpoint to start embedding for all chunks of a specific document.
    - Or use the `POST /embedding/batch/start` endpoint to start embedding for multiple documents by providing a list of document IDs in the request body.
