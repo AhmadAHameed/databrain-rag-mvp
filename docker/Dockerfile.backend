@@ -1,0 +1,68 @@
+# Use Python 3.13.3 as the base image
+FROM python:3.13.3-slim
+
+# Set environment variables for Python behavior (these rarely change)
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies (changes infrequently)
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    git \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user with proper shell and home directory for VS Code compatibility
+RUN groupadd -r appuser && \
+    useradd -r -g appuser -m -s /bin/bash appuser && \
+    echo "appuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+
+# Copy requirements first for better layer caching
+COPY backend/requirements.txt ./
+
+# Install uv and use it for dependency installation (much faster than pip)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install uv && \
+    uv pip install --system -r requirements.txt
+
+# Set application-specific environment variables after dependencies
+ENV PYTHONPATH=/app
+
+# Create necessary directories with proper permissions
+RUN mkdir -p _artifacts/uploads _development/temp/doc_cache logs && \
+    chown -R appuser:appuser /app
+
+# Copy the entire application (this layer changes most frequently)
+COPY backend/. ./
+
+# Set ownership of copied files
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Set up user environment
+ENV HOME=/home/appuser
+ENV USER=appuser
+WORKDIR /app
+
+# Initialize Docling models (download required model files)
+# RUN python scripts/initialize_docling_models.py || echo "Docling models will be initialized on first use"
+
+# Expose the port the app runs on
+EXPOSE ${API_PORT:-8000}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Command to run the application
+CMD ["python", "main.py"]

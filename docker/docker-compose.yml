@@ -1,0 +1,135 @@
+services:
+  postgresql:
+    image: postgres:16.9
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-5555}:${POSTGRES_PORT:-5432}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rag_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    container_name: qdrant_vect_db
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=${QDRANT_PORT:-6333}
+      - QDRANT__SERVICE__GRPC_PORT=${QDRANT_GRPC_PORT:-6334}
+    ports:
+      - "${QDRANT_EXTERNAL_PORT:-6336}:${QDRANT_PORT:-6333}"
+      - "${QDRANT_GRPC_EXTERNAL_PORT:-6446}:${QDRANT_GRPC_PORT:-6334}"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - rag_network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "timeout 5 bash -c '</dev/tcp/localhost/${QDRANT_PORT:-6333}'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST:-'0.0.0.0'}
+      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-'*'}
+    ports:
+      - "${OLLAMA_EXTERNAL_PORT:-11444}:${OLLAMA_PORT:-11434}"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - rag_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "timeout 5 bash -c '</dev/tcp/localhost/11434'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: backend_app
+    environment:
+      - API_HOST=${API_HOST}
+      - API_PORT=${API_PORT}
+      - PYTHONPATH=/app
+    ports:
+      - "${API_EXTERNAL_PORT:-8008}:${API_PORT:-8000}"
+    volumes:
+      - ../backend:/app
+    networks:
+      - rag_network
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${API_PORT:-8000}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    platform: linux/amd64
+    container_name: frontend_app
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    ports:
+      - "${FRONTEND_EXTERNAL_PORT:-3030}:${FRONTEND_PORT:-5173}"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - rag_network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "sh", "-c", "timeout 5 bash -c '</dev/tcp/localhost/${FRONTEND_PORT:-5173}'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_storage:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  rag_network:
+    driver: bridge

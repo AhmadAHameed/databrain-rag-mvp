@@ -1,0 +1,84 @@
+/* Enhanced animations for streaming response cards */
+.context-card-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.context-card-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.context-card:hover {
+  animation: cardHover 0.3s ease-out forwards;
+}
+
+@keyframes cardHover {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  100% {
+    transform: translateX(4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+}
+
+/* Smooth scrollbar styling */
+.context-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.context-scroll::-webkit-scrollbar-track {
+  background-color: #f1f3f4;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.context-scroll::-webkit-scrollbar-thumb {
+  background-color: #dadce0;
+  border-radius: 4px;
+  border: 1px solid #f1f3f4;
+}
+
+.context-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #bdc1c6;
+}
+
+.context-scroll::-webkit-scrollbar-thumb:active {
+  background-color: #9aa0a6;
+}
+
+/* Enhanced fade animation */
+.response-fade-in {
+  animation: responseSlideIn 0.5s ease-out;
+}
+
+@keyframes responseSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for streaming indicators */
+.streaming-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+  }
+}
